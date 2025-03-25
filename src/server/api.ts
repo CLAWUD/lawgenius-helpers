@@ -18,7 +18,7 @@ app.post('/api/legal-chat', (req, res) => {
     // Call Groq API with Pinecone integration
     queryGroqWithPinecone(query, language)
       .then(response => {
-        res.status(200).json({ response });
+        res.json({ response });
       })
       .catch(error => {
         console.error('Error in queryGroqWithPinecone:', error);
