@@ -1,9 +1,10 @@
 
 import { useState, useRef, useEffect } from 'react';
-import { Send, User, Bot, FileText, Loader2 } from 'lucide-react';
+import { Send, User, Bot, Mic, MicOff, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { useUser } from '@clerk/clerk-react';
+import { toast } from '@/components/ui/use-toast';
 
 interface Message {
   id: string;
@@ -25,8 +26,112 @@ const ChatSection = () => {
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [isListening, setIsListening] = useState(false);
+  const [recognizedLanguage, setRecognizedLanguage] = useState('en-IN');
+  
+  // Speech recognition reference
+  const recognitionRef = useRef<SpeechRecognition | null>(null);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  // Initialize speech recognition
+  useEffect(() => {
+    if ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window) {
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      recognitionRef.current = new SpeechRecognition();
+      
+      recognitionRef.current.continuous = false;
+      recognitionRef.current.interimResults = false;
+      recognitionRef.current.lang = recognizedLanguage;
+
+      recognitionRef.current.onresult = (event) => {
+        const transcript = event.results[0][0].transcript;
+        setInputValue(prev => prev + ' ' + transcript.trim());
+        stopListening();
+      };
+
+      recognitionRef.current.onerror = (event) => {
+        console.error('Speech recognition error', event.error);
+        toast({
+          title: "Voice Recognition Error",
+          description: `Error: ${event.error}. Please try again.`,
+          variant: "destructive"
+        });
+        stopListening();
+      };
+
+      recognitionRef.current.onend = () => {
+        setIsListening(false);
+      };
+    }
+
+    return () => {
+      if (recognitionRef.current) {
+        stopListening();
+      }
+    };
+  }, [recognizedLanguage]);
+
+  const startListening = () => {
+    if (recognitionRef.current) {
+      try {
+        recognitionRef.current.start();
+        setIsListening(true);
+      } catch (error) {
+        console.error('Error starting speech recognition:', error);
+      }
+    } else {
+      toast({
+        title: "Voice Recognition Not Available",
+        description: "Your browser doesn't support speech recognition.",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const stopListening = () => {
+    if (recognitionRef.current) {
+      try {
+        recognitionRef.current.stop();
+        setIsListening(false);
+      } catch (error) {
+        console.error('Error stopping speech recognition:', error);
+      }
+    }
+  };
+
+  const toggleListening = () => {
+    if (isListening) {
+      stopListening();
+    } else {
+      startListening();
+    }
+  };
+
+  const queryGroqChatbot = async (userQuery: string) => {
+    try {
+      const response = await fetch('/api/legal-chat', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ 
+          query: userQuery,
+          language: recognizedLanguage.split('-')[0] // Extract language code (e.g., "en" from "en-IN")
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to get response from the chatbot');
+      }
+
+      const data = await response.json();
+      return data.response;
+    } catch (error) {
+      console.error('Error querying chatbot:', error);
+      return "I'm sorry, I encountered an error processing your request. Please try again later.";
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!inputValue.trim()) return;
 
@@ -41,27 +146,53 @@ const ChatSection = () => {
     setInputValue('');
     setIsLoading(true);
 
-    // Simulate AI response after a delay
-    setTimeout(() => {
-      const responseMessages = [
-        "Based on the Indian Penal Code Section 378, theft is defined as the dishonest taking of property without consent, with intent to permanently deprive the owner of that property.",
-        "According to the Code of Criminal Procedure (CrPC) Section 154, an FIR (First Information Report) must be registered by the police when information about a cognizable offense is received.",
-        "The Motor Vehicles Act Section 185 states that driving with a blood alcohol content exceeding 30mg per 100ml of blood is punishable by imprisonment up to 6 months and/or a fine of up to ₹10,000 for the first offense.",
-        "I've analyzed your situation. Under the Consumer Protection Act, 2019, you're entitled to compensation for defective products. I recommend filing a complaint with the District Consumer Disputes Redressal Commission.",
-        "As per the Limitation Act, the time limit to file a civil case regarding property disputes is 12 years from the date when the right to sue first accrues."
-      ];
-
-      const randomResponse = responseMessages[Math.floor(Math.random() * responseMessages.length)];
-
+    try {
+      // Query Groq-powered chatbot
+      const response = await queryGroqChatbot(userMessage.content);
+      
       const botMessage: Message = {
         id: (Date.now() + 1).toString(),
         type: 'bot',
-        content: randomResponse,
+        content: response,
         timestamp: new Date()
       };
+      
       setMessages(prev => [...prev, botMessage]);
+    } catch (error) {
+      console.error('Error in chat submission:', error);
+      
+      // Add error message
+      const errorMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        type: 'bot',
+        content: "I'm sorry, I encountered an error processing your request. Please try again later.",
+        timestamp: new Date()
+      };
+      
+      setMessages(prev => [...prev, errorMessage]);
+    } finally {
       setIsLoading(false);
-    }, 1500);
+    }
+  };
+
+  // Languages supported by the speech recognition
+  const supportedLanguages = [
+    { code: 'en-IN', name: 'English (India)' },
+    { code: 'hi-IN', name: 'Hindi' },
+    { code: 'bn-IN', name: 'Bengali' },
+    { code: 'te-IN', name: 'Telugu' },
+    { code: 'ta-IN', name: 'Tamil' },
+    { code: 'mr-IN', name: 'Marathi' },
+    { code: 'gu-IN', name: 'Gujarati' },
+    { code: 'kn-IN', name: 'Kannada' },
+    { code: 'ml-IN', name: 'Malayalam' }
+  ];
+
+  const handleLanguageChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    setRecognizedLanguage(e.target.value);
+    if (recognitionRef.current) {
+      recognitionRef.current.lang = e.target.value;
+    }
   };
 
   useEffect(() => {
@@ -80,6 +211,21 @@ const ChatSection = () => {
           <p className="text-navy-600 max-w-2xl mx-auto">
             Ask any legal question and get instant, accurate guidance based on Indian laws, regulations and court precedents.
           </p>
+          
+          {/* Language selector */}
+          <div className="flex justify-center mt-4">
+            <select 
+              value={recognizedLanguage}
+              onChange={handleLanguageChange}
+              className="px-3 py-2 bg-white border border-navy-200 rounded-md text-navy-700 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
+            >
+              {supportedLanguages.map(lang => (
+                <option key={lang.code} value={lang.code}>
+                  {lang.name}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
 
         <div className="max-w-4xl mx-auto">
@@ -155,9 +301,11 @@ const ChatSection = () => {
                 <Button 
                   type="button" 
                   variant="outline" 
-                  className="mt-1 border-navy-200 text-navy-600 hover:bg-navy-50"
+                  className={`mt-1 border-navy-200 hover:bg-navy-50 
+                    ${isListening ? 'bg-red-50 text-red-600 border-red-300' : 'text-navy-600'}`}
+                  onClick={toggleListening}
                 >
-                  <FileText size={18} />
+                  {isListening ? <MicOff size={18} /> : <Mic size={18} />}
                 </Button>
                 <div className="flex-1 relative">
                   <Textarea
