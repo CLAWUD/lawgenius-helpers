@@ -1,11 +1,12 @@
 
-import { NextApiRequest, NextApiResponse } from 'next';
+import express from 'express';
+import cors from 'cors';
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
-  }
+const app = express();
+app.use(cors());
+app.use(express.json());
 
+app.post('/api/legal-chat', async (req, res) => {
   try {
     const { query, language = 'en' } = req.body;
 
@@ -21,14 +22,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     console.error('Error in legal-chat API:', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
-}
+});
 
 async function queryGroqWithPinecone(userQuery: string, language: string) {
   const GROQ_API_KEY = "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";
   
   try {
     // For simplicity, we're calling Groq directly here without Pinecone integration
-    // In a production app, you'd implement the full Python logic here or via a backend service
+    // In a production app, you'd implement the full Python logic shown in the user's code
     const url = "https://api.groq.com/openai/v1/chat/completions";
 
     const headers = {
@@ -43,7 +44,7 @@ async function queryGroqWithPinecone(userQuery: string, language: string) {
           "role": "system", 
           "content": `You are a helpful legal assistant specializing in Indian law. 
                      Respond in ${language === 'en' ? 'English' : language} language.
-                     You provide accurate information based on Indian legal codes, 
+                     You provide accurate information based on Indian legal codes,
                      including the IPC, CrPC, and relevant Supreme Court judgments.`
         },
         {"role": "user", "content": userQuery}
@@ -67,3 +68,13 @@ async function queryGroqWithPinecone(userQuery: string, language: string) {
     return "I'm sorry, I encountered an error while processing your request. Please try again later.";
   }
 }
+
+// Start the server only if not in a browser environment
+if (typeof window === 'undefined') {
+  const PORT = process.env.PORT || 3001;
+  app.listen(PORT, () => {
+    console.log(`Server running on port ${PORT}`);
+  });
+}
+
+export default app;

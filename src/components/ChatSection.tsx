@@ -1,4 +1,3 @@
-
 import { useState, useRef, useEffect } from 'react';
 import { Send, User, Bot, Mic, MicOff, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -29,10 +28,8 @@ const ChatSection = () => {
   const [isListening, setIsListening] = useState(false);
   const [recognizedLanguage, setRecognizedLanguage] = useState('en-IN');
   
-  // Speech recognition reference
   const recognitionRef = useRef<SpeechRecognition | null>(null);
 
-  // Initialize speech recognition
   useEffect(() => {
     if ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window) {
       const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -135,7 +132,6 @@ const ChatSection = () => {
     e.preventDefault();
     if (!inputValue.trim()) return;
 
-    // Add user message
     const userMessage: Message = {
       id: Date.now().toString(),
       type: 'user',
@@ -147,7 +143,6 @@ const ChatSection = () => {
     setIsLoading(true);
 
     try {
-      // Query Groq-powered chatbot
       const response = await queryGroqChatbot(userMessage.content);
       
       const botMessage: Message = {
@@ -161,7 +156,6 @@ const ChatSection = () => {
     } catch (error) {
       console.error('Error in chat submission:', error);
       
-      // Add error message
       const errorMessage: Message = {
         id: (Date.now() + 1).toString(),
         type: 'bot',
@@ -175,7 +169,6 @@ const ChatSection = () => {
     }
   };
 
-  // Languages supported by the speech recognition
   const supportedLanguages = [
     { code: 'en-IN', name: 'English (India)' },
     { code: 'hi-IN', name: 'Hindi' },
@@ -201,7 +194,6 @@ const ChatSection = () => {
 
   return (
     <div id="chat" className="relative py-16 md:py-24 bg-gradient-to-b from-white to-navy-50">
-      {/* Decorative elements */}
       <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-navy-200 to-transparent"></div>
       <div className="absolute bottom-0 left-0 w-full h-1/2 bg-gradient-to-t from-navy-50/50 to-transparent -z-10"></div>
       
@@ -212,7 +204,6 @@ const ChatSection = () => {
             Ask any legal question and get instant, accurate guidance based on Indian laws, regulations and court precedents.
           </p>
           
-          {/* Language selector */}
           <div className="flex justify-center mt-4">
             <select 
               value={recognizedLanguage}
@@ -230,7 +221,6 @@ const ChatSection = () => {
 
         <div className="max-w-4xl mx-auto">
           <div className="glass-card p-4 md:p-6 overflow-hidden">
-            {/* Chat header */}
             <div className="flex items-center pb-4 border-b border-navy-100">
               <div className="w-10 h-10 rounded-full bg-gradient-to-br from-navy-500 to-teal-500 flex items-center justify-center text-white">
                 <Bot size={20} />
@@ -246,7 +236,6 @@ const ChatSection = () => {
               </div>
             </div>
 
-            {/* Chat messages */}
             <div className="py-4 px-2 h-[400px] overflow-y-auto flex flex-col gap-4">
               {messages.map((message) => (
                 <div 
@@ -295,7 +284,6 @@ const ChatSection = () => {
               <div ref={messagesEndRef}></div>
             </div>
 
-            {/* Input form */}
             <form onSubmit={handleSubmit} className="pt-3 border-t border-navy-100">
               <div className="flex items-start gap-2">
                 <Button 
@@ -331,7 +319,6 @@ const ChatSection = () => {
               </div>
             </form>
 
-            {/* Chat footer */}
             <div className="mt-4 text-xs text-center text-navy-400">
               LegalGenius AI provides general legal information, not legal advice. 
               For specific legal issues, consult a qualified attorney.
