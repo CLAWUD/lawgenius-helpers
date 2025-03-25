@@ -7,7 +7,7 @@ app.use(cors());
 app.use(express.json());
 
 // Define route handler properly
-app.post('/api/legal-chat', async (req, res) => {
+app.post('/api/legal-chat', (req, res) => {
   try {
     const { query, language = 'en' } = req.body;
 
@@ -16,12 +16,17 @@ app.post('/api/legal-chat', async (req, res) => {
     }
 
     // Call Groq API with Pinecone integration
-    const response = await queryGroqWithPinecone(query, language);
-    
-    return res.status(200).json({ response });
+    queryGroqWithPinecone(query, language)
+      .then(response => {
+        res.status(200).json({ response });
+      })
+      .catch(error => {
+        console.error('Error in queryGroqWithPinecone:', error);
+        res.status(500).json({ error: 'Internal server error' });
+      });
   } catch (error) {
     console.error('Error in legal-chat API:', error);
-    return res.status(500).json({ error: 'Internal server error' });
+    res.status(500).json({ error: 'Internal server error' });
   }
 });
 
