@@ -6,6 +6,7 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+// Define route handler properly
 app.post('/api/legal-chat', async (req, res) => {
   try {
     const { query, language = 'en' } = req.body;
@@ -67,14 +68,6 @@ async function queryGroqWithPinecone(userQuery: string, language: string) {
     console.error("Error querying Groq:", error);
     return "I'm sorry, I encountered an error while processing your request. Please try again later.";
   }
-}
-
-// Start the server only if not in a browser environment
-if (typeof window === 'undefined') {
-  const PORT = process.env.PORT || 3001;
-  app.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
-  });
 }
 
 export default app;
